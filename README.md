@@ -6,13 +6,28 @@
 
 Build a chatbot for management to answer questions regarding the reviews in Google App Store
 
+Currently using sample data from all of the reviews collected for development purpose and due to resource limitation. 
+
+Embedding model can be run locally or through free Hugging Face Inference API, by default runs locally as embedding model are small enough and not resource heavy.
+
+For the LLM, the app fully relies on free Hugging Face Inference API, as my machine simply cannot support an LLM model nor do I have the credits for paid API.
+
+For Embedding, the model of choice is: **sentence-transformers/all-MiniLM-l6-v2**
+
+For the LLM, the model currently used is: **meta-llama/Meta-Llama-3-8B-Instruct**
+
+For the UI I have taken the liberty to implement Chainlit instead of Streamlit as it is a much sleeker look for the purpose of chatbot rather than Streamlit.
+
+As the data is rather large, I have decided not to push it into LFS and may be downloaded before usage.
+
 ## Preview 
 [Video](./references/app-recording.mov)
 
 ## How To
 
-1. Install dependencies using Python 3.11 `pip install -r requirements.txt`
-2. Launch Chainlit app with `chainlit run app.py -w`
+1. Download the review data into `/data/raw/`
+2. Install dependencies using Python 3.11 `pip install -r requirements.txt`
+3. Launch Chainlit app with `chainlit run app.py -w`
 
 ## Project Organization
 
