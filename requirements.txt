@@ -1,6 +1,9 @@
-black
-flake8
-isort
 pip
 python-dotenv
--e .
+emoji
+pandas
+chainlit
+langchain
+faiss-cpu
+langchain-huggingface
+langchain-community

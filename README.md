@@ -9,6 +9,11 @@ Build a chatbot for management to answer questions regarding the reviews in Goog
 ## Preview 
 [Video](./references/app-recording.mov)
 
+## How To
+
+1. Install dependencies using Python 3.11 `pip install -r requirements.txt`
+2. Launch Chainlit app with `chainlit run app.py -w`
+
 ## Project Organization
 
 ```
