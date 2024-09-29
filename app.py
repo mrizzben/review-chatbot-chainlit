@@ -9,8 +9,7 @@ from langchain_huggingface import (
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-
-# from langchain.chains import RetrievalQA
+from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from emoji import replace_emoji
@@ -35,9 +34,9 @@ def load_data():
         df = pd.read_csv("./data/raw/SPOTIFY_REVIEWS.csv").sample(300)
         return df[["review_text", "review_rating", "review_likes"]]
     except FileNotFoundError:
-        cl.ErrorMessage(
+        print(
             "CSV file not found. Please ensure 'SPOTIFY_REVIEWS.csv' is in the same directory as this script."
-        ).send()
+        )
         return None
 
 
@@ -45,7 +44,9 @@ def load_data():
 def create_vector_store(df, use_local_embeddings=True):
     try:
         if use_local_embeddings:
-            embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-l6-v2")
+            embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-l6-v2"
+            )
         else:
             embeddings = HuggingFaceEndpointEmbeddings(
                 model="sentence-transformers/all-MiniLM-l6-v2",
@@ -57,8 +58,8 @@ def create_vector_store(df, use_local_embeddings=True):
         return vector_store
     except Exception as e:
         error_embeddings = f"Error creating vector store: {str(e)}"
-        cl.ErrorMessage(error_embeddings).send()
-        # Add sleep to rate limit API request incase of failure
+        print(error_embeddings)
+        # Add sleep to rate limit API request in case of failure
         time.sleep(60)
         return None
 
@@ -66,7 +67,8 @@ def create_vector_store(df, use_local_embeddings=True):
 def init_llm():
     try:
         llm = HuggingFaceEndpoint(
-            repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+            # repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+            repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
             temperature=0.5,
             max_new_tokens=256,
             huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
@@ -74,15 +76,22 @@ def init_llm():
         return llm
     except Exception as e:
         error_llm = f"Error initializing language model: {str(e)}"
-        cl.ErrorMessage(error_llm).send()
-        # Add sleep to rate limit API request incase of failure
+        print(error_llm)
+        # Add sleep to rate limit API request in case of failure
         time.sleep(60)
         return None
 
 
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
 # Create QA chain
 def create_qa_chain(vector_store, llm):
-    prompt_template = """Analyze the following Google Store reviews and answer the question. If you can't find an answer, say you don't know.
+    prompt_template = """Analyze the following reviews and answer the question. If you can't find an answer, say you don't know. 
+    The reviews are specificallly for the Spotify app in Google App Store, \
+    any other mention of any other product unrelated to Spotify, music streaming platform and features should be dismissed. \
+    Your target audiences are the management of Spotify, please answer professionally and with business knowledge.
 
     Context: {context}
 
@@ -90,17 +99,12 @@ def create_qa_chain(vector_store, llm):
 
     Answer: Let me analyze the reviews and provide an insightful answer:
     """
-    PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    # chain_type_kwargs = {"prompt": PROMPT}
-    # qa_chain = RetrievalQA.from_chain_type(
-    #     llm=llm,
-    #     chain_type="stuff",
-    #     retriever=vector_store.as_retriever(),
-    #     chain_type_kwargs=chain_type_kwargs,
-    # )
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
     qa_chain = (
         {
-            "context": vector_store.as_retriever(),
+            "context": vector_store.as_retriever() | format_docs,
             "question": RunnablePassthrough(),
         }
         | PROMPT
@@ -116,7 +120,8 @@ def quality_score(answer):
     if len(answer.split()) > 30:  # Checks if the answer is substantial
         score += 1
     if any(
-        keyword in answer.lower() for keyword in ["analysis", "insight", "trend", "recommendation"]
+        keyword in answer.lower()
+        for keyword in ["analysis", "insight", "trend", "recommendation"]
     ):
         score += 1
     if answer.count(".") > 2:  # Checks if the answer has multiple sentences
@@ -134,9 +139,7 @@ async def init():
             if llm is not None:
                 qa_chain = create_qa_chain(vector_store, llm)
                 cl.user_session.set("qa_chain", qa_chain)
-                await cl.Message(
-                    "Google Store Reviews Q&A Tool is ready. Ask your question!"
-                ).send()
+                await cl.Message("Reviews Q&A Tool is ready. Ask your question!").send()
             else:
                 await cl.Message(
                     "Failed to initialize the language model. Please check your Hugging Face API token and internet connection."
@@ -150,18 +153,18 @@ async def init():
 
 
 @cl.on_message
-async def main(message: str):
+async def main(message: cl.Message):
     qa_chain = cl.user_session.get("qa_chain")
     if qa_chain is not None:
         try:
-            response = qa_chain.invoke(message)
-            answer = f"Answer: {response}"
-            await cl.Message(answer).send()
+            response = qa_chain.invoke(message.content)
             score = quality_score(response)
-            qual_score = f"Answer Quality Score: {score}/3"
-            await cl.Message(qual_score).send()
+            answer = f"""{response}\n Answer Quality Score: {score}/3"""
+            await cl.Message(answer).send()
         except Exception as e:
             error_main = f"Error generating response: {str(e)}"
             await cl.Message(error_main).send()
     else:
-        await cl.Message("QA system is not initialized. Please restart the chat.").send()
+        await cl.Message(
+            "QA system is not initialized. Please restart the chat."
+        ).send()
