@@ -10,10 +10,13 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from emoji import replace_emoji
 import os
+import html
 
 load_dotenv()
 # Hugging Face API token (replace with your actual token)
@@ -70,7 +73,7 @@ def init_llm():
             # repo_id="mistralai/Mistral-7B-Instruct-v0.3",
             repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
             temperature=0.5,
-            max_new_tokens=256,
+            max_new_tokens=512,
             huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
         )
         return llm
@@ -88,26 +91,20 @@ def format_docs(docs):
 
 # Create QA chain
 def create_qa_chain(vector_store, llm):
-    prompt_template = """Analyze the following reviews and answer the question. If you can't find an answer, say you don't know. 
-    The reviews are specificallly for the Spotify app in Google App Store, \
-    any other mention of any other product unrelated to Spotify, music streaming platform and features should be dismissed. \
+    retriever = vector_store.as_retriever()
+    prompt_template = """Analyze the following reviews and answer the question. If you can't find an answer, say you don't know.
+    The reviews are specificallly for the Spotify app in Google App Store, any other mention of any other product unrelated to Spotify, music streaming platform and features should be dismissed. 
     Your target audiences are the management of Spotify, please answer professionally and with business knowledge.
-
     Context: {context}
-
     Question: {question}
-
     Answer: Let me analyze the reviews and provide an insightful answer:
     """
-    PROMPT = PromptTemplate(
+    qa_prompt = PromptTemplate(
         template=prompt_template, input_variables=["context", "question"]
     )
     qa_chain = (
-        {
-            "context": vector_store.as_retriever() | format_docs,
-            "question": RunnablePassthrough(),
-        }
-        | PROMPT
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | qa_prompt
         | llm
         | StrOutputParser()
     )
@@ -158,8 +155,9 @@ async def main(message: cl.Message):
     if qa_chain is not None:
         try:
             response = qa_chain.invoke(message.content)
+            print(response)
             score = quality_score(response)
-            answer = f"""{response}\n Answer Quality Score: {score}/3"""
+            answer = f"""{response}\n ------\n Answer Quality Score: {score}/3"""
             await cl.Message(answer).send()
         except Exception as e:
             error_main = f"Error generating response: {str(e)}"
