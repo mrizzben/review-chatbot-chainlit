@@ -32,9 +32,11 @@ def preprocess_text(text):
 
 
 # Load the CSV file
-def load_data():
+def load_data(use_sample=True):
     try:
-        df = pd.read_csv("./data/raw/SPOTIFY_REVIEWS.csv").sample(300)
+        df = pd.read_csv("./data/raw/SPOTIFY_REVIEWS.csv")
+        if use_sample:
+            df = df.sample(300)
         return df[["review_text", "review_rating", "review_likes"]]
     except FileNotFoundError:
         print(
