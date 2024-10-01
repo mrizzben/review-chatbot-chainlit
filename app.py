@@ -94,7 +94,7 @@ def create_qa_chain(vector_store, llm):
     retriever = vector_store.as_retriever()
     prompt_template = """Analyze the following reviews and answer the question. If you can't find an answer, say you don't know.
     The reviews are specificallly for the Spotify app in Google App Store, any other mention of any other product unrelated to Spotify, music streaming platform and features should be dismissed. 
-    Your target audiences are the management of Spotify, please answer professionally and with business knowledge.
+    Your target audiences are the management-level officers, please answer professionally and with fair amount of business knowledge.
     Context: {context}
     Question: {question}
     Answer: Let me analyze the reviews and provide an insightful answer:
