@@ -32,8 +32,9 @@ As the data is rather large, I have decided not to push it into LFS and may be d
 3. Launch Chainlit app with `chainlit run app.py -w`
 
 ### Launch with Docker
-1. Create docker image `docker build -t review-chatbot-app .`
-2. Launch docker image `docker run -d --publish=8000:8000 --name=review-chatbot review-chatbot-app`
+1. Download the review data into `/data/raw/`
+2. Create docker image `docker build -t review-chatbot-app .`
+3. Launch docker image `docker run -d --publish=8000:8000 --name=review-chatbot review-chatbot-app`
 
 ## Project Organization
 
