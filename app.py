@@ -9,14 +9,10 @@ from langchain_huggingface import (
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain.chains import RetrievalQA
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from emoji import replace_emoji
 import os
-import html
 
 load_dotenv()
 # Hugging Face API token (replace with your actual token)
@@ -25,8 +21,8 @@ if not HUGGINGFACE_API_TOKEN:
     raise ValueError("HUGGINGFACE_API_TOKEN not found in environment variables")
 
 
+# Remove emojis from texts
 def preprocess_text(text):
-    # Remove emojis from texts
     text = replace_emoji(text, replace="")
     return text.lower()
 
@@ -45,7 +41,7 @@ def load_data(use_sample=True):
         return None
 
 
-# Create vector store
+# Create vector store using FAISS and default use local embeddings model
 def create_vector_store(df, use_local_embeddings=True):
     try:
         if use_local_embeddings:
@@ -69,6 +65,7 @@ def create_vector_store(df, use_local_embeddings=True):
         return None
 
 
+# Initialise Hugging Face Inference API
 def init_llm():
     try:
         llm = HuggingFaceEndpoint(
@@ -87,11 +84,12 @@ def init_llm():
         return None
 
 
+# Format context docs in QA chain
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-# Create QA chain
+# Create QA chain using Langchain CEL
 def create_qa_chain(vector_store, llm):
     retriever = vector_store.as_retriever()
     prompt_template = """Analyze the following reviews and answer the question. If you can't find an answer, say you don't know.
@@ -113,10 +111,10 @@ def create_qa_chain(vector_store, llm):
     return qa_chain
 
 
-# Quality scoring function
+# Quality scoring function, basically basic check whether the result is decent enough
 def quality_score(answer):
     score = 0
-    if len(answer.split()) > 30:  # Checks if the answer is substantial
+    if len(answer.split()) > 30:  # Checks if the answer is not just snippets
         score += 1
     if any(
         keyword in answer.lower()
@@ -130,8 +128,9 @@ def quality_score(answer):
 
 @cl.on_chat_start
 async def init():
-    df = load_data()
+    df = load_data(use_sample=False)
     if df is not None:
+        # Use
         vector_store = create_vector_store(df)
         if vector_store is not None:
             llm = init_llm()

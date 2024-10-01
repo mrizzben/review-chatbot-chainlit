@@ -18,12 +18,14 @@ For the LLM, the model currently used is: **meta-llama/Meta-Llama-3-8B-Instruct*
 
 For the UI I have taken the liberty to implement Chainlit instead of Streamlit as it is a much sleeker look for the purpose of chatbot rather than Streamlit.
 
-As the data is rather large, I have decided not to push it into LFS and may be downloaded before usage.
+As the data is rather large, I have decided not to push it into LFS and may be [downloaded before usage.
 
 ## Preview 
 [Video](./references/app-recording.mov)
 
 ## How To
+
+In both methods, you need to have a Hugging Face Token in your `.env`, as shown in `.env.sample`
 
 ### Launch Locally 
 
